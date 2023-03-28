@@ -4,15 +4,22 @@ from PIL import Image
 from deepforest import main
 
 
-def detect_trees(file_name, patch_size=900, overlap=0.4, thresh=0.5):
+def get_tree_rects(file_name, patch_size=900, overlap=0.4, thresh=0.5):
     model = main.deepforest()
     model.use_release()
     model.config["score_thresh"] = thresh
     Image.MAX_IMAGE_PIXELS = None
 
-    filename_format = "dt_p{0}_o{1:n}_t{2:n}_n{3}.png"
     tree_predictions = model.predict_tile(file_name, return_plot=False, patch_size=patch_size, patch_overlap=overlap)
+    print(tree_predictions)
+    return tree_predictions
 
+
+def get_tree_img(file_name, patch_size=900, overlap=0.4, thresh=0.5):
+    filename_format = "dt_p{0}_o{1:n}_t{2:n}_n{3}.png"
+    tree_predictions = get_tree_rects(file_name, patch_size, overlap, thresh)
+
+    # render on an image
     img = Image.open(file_name)
     aspect = img.size[0] / img.size[1]
     w = 15  # inches
