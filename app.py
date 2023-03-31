@@ -14,13 +14,18 @@ def route_root():
 def tree_rects():
     print(request.files)
 
-    file = request.files['file']
-    file_name = './tmp_store.bin'
-    file.save(file_name)
+    uploaded_file = request.files['file']
+    tmp_file_name = './tmp/' + uploaded_file.filename
+    uploaded_file.save(tmp_file_name)
 
-    result_file = get_tree_rects(file_name)  # perform some AI magic on this file
+    result_df = get_tree_rects(tmp_file_name)  # perform some AI magic on this file
+    result_dict = {}  # empty response
+
+    if result_df is not None:
+        result_dict = result_df.to_dict('records')
+
     # return as JSON
-    return send_file(result_file, as_attachment=True)  # send it back
+    return jsonify(result_dict)
 
 
 @app.route('/tree_img', methods=['POST', 'PUT'])
