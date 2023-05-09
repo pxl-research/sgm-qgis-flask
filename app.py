@@ -1,4 +1,3 @@
-import json
 import os
 import traceback
 
@@ -12,13 +11,19 @@ from flask import Flask, jsonify, request, send_file, session
 app = Flask(__name__)
 app.secret_key = 'deep-forest-plugin'
 
-print('Loading deepforest...')
+# globals
+setting_keys = ['patch_size', 'patch_overlap', 'thresh', 'iou_threshold']
+setting_defaults = {'patch_size': 900,
+                    'patch_overlap': 0.4,
+                    'thresh': 0.5,
+                    'iou_threshold': 0.5}
+
+# load deepforest
+model_path = './tmp/forest_model.pl'
 # df_model = main.deepforest()
 # df_model.use_release()
-
-model_path = './tmp/forest_model.pl'
 # torch.save(df_model.model.state_dict(), model_path)
-print('Stored deepforest')
+print(' -- Loaded deepforest!')
 
 
 @app.route("/", methods=['GET'])
@@ -28,8 +33,6 @@ def route_root():
 
 @app.route('/settings', methods=['POST', 'PUT'])
 def store_settings():
-    setting_keys = ['patch_size', 'patch_overlap', 'thresh', 'iou_threshold']
-
     settings_json = request.get_json()
     print(settings_json)
 
@@ -81,7 +84,15 @@ def tree_img():
     return send_file(result_file, as_attachment=True)  # send annotated file back
 
 
-def get_tree_rects(file_name, patch_size=900, overlap=0.4, thresh=0.5):
+def get_tree_rects(file_name):
+    # load settings from session
+    settings = {}
+    for key in setting_keys:
+        if key in session:
+            settings[key] = session[key]
+        else:
+            settings[key] = setting_defaults[key]
+
     tree_predictions = []
     again = True
     attempts = 0
@@ -90,12 +101,13 @@ def get_tree_rects(file_name, patch_size=900, overlap=0.4, thresh=0.5):
             attempts = attempts + 1
             model = main.deepforest()
             model.model.load_state_dict(torch.load(model_path))
-            model.config["score_thresh"] = thresh
+            model.config["score_thresh"] = settings['thresh']
             Image.MAX_IMAGE_PIXELS = None
             tree_predictions = model.predict_tile(file_name,
                                                   return_plot=False,
-                                                  patch_size=patch_size,
-                                                  patch_overlap=overlap)
+                                                  patch_size=settings['patch_size'],
+                                                  patch_overlap=settings['patch_overlap'],
+                                                  iou_threshold=settings['iou_threshold'])
             again = False  # dangerous
         except ReferenceError as re:
             print('ReferenceError: ', re)
