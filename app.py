@@ -1,4 +1,5 @@
 import os
+import traceback
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
@@ -57,13 +58,30 @@ def tree_img():
 
 
 def get_tree_rects(file_name, patch_size=900, overlap=0.4, thresh=0.5):
-    model = main.deepforest()
-    model.model.load_state_dict(torch.load(model_path))
-    model.config["score_thresh"] = thresh
-    Image.MAX_IMAGE_PIXELS = None
+    tree_predictions = []
+    again = True
+    attempts = 0
+    while again:
+        try:
+            attempts = attempts + 1
+            model = main.deepforest()
+            model.model.load_state_dict(torch.load(model_path))
+            model.config["score_thresh"] = thresh
+            Image.MAX_IMAGE_PIXELS = None
+            tree_predictions = model.predict_tile(file_name,
+                                                  return_plot=False,
+                                                  patch_size=patch_size,
+                                                  patch_overlap=overlap)
+            again = False  # dangerous
+        except ReferenceError as re:
+            print('ReferenceError: ', re)
+            traceback.print_exc()
+            if attempts > 3:
+                again = False  # put some limit to this madness
 
-    tree_predictions = model.predict_tile(file_name, return_plot=False, patch_size=patch_size, patch_overlap=overlap)
-    print(tree_predictions)
+    if attempts > 1:
+        print(' ** Problems occurred, we had to try this ', attempts, ' times...')
+
     return tree_predictions
 
 
