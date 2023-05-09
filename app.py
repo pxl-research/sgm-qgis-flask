@@ -1,10 +1,22 @@
 import os
 
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import torch
+from PIL import Image
+from deepforest import main
 from flask import Flask, jsonify, request, send_file
 
-from forest import get_tree_rects, get_tree_img
-
 app = Flask(__name__)
+app.secret_key = 'deep-forest-plugin'
+
+print('Loading deepforest...')
+df_model = main.deepforest()
+df_model.use_release()
+
+model_path = './tmp/forest_model.pl'
+torch.save(df_model.model.state_dict(), model_path)
+print('Stored deepforest')
 
 
 @app.route("/", methods=['GET'])
@@ -42,3 +54,45 @@ def tree_img():
 
     os.remove(tmp_file_name)  # remove temporary file
     return send_file(result_file, as_attachment=True)  # send annotated file back
+
+
+def get_tree_rects(file_name, patch_size=900, overlap=0.4, thresh=0.5):
+    model = main.deepforest()
+    model.model.load_state_dict(torch.load(model_path))
+    model.config["score_thresh"] = thresh
+    Image.MAX_IMAGE_PIXELS = None
+
+    tree_predictions = model.predict_tile(file_name, return_plot=False, patch_size=patch_size, patch_overlap=overlap)
+    print(tree_predictions)
+    return tree_predictions
+
+
+def get_tree_img(file_name, patch_size=900, overlap=0.4, thresh=0.5):
+    tree_predictions = get_tree_rects(file_name, patch_size, overlap, thresh)
+
+    # render on an image
+    img = Image.open(file_name)
+    aspect = img.size[0] / img.size[1]
+    w = 15  # inches
+    h = w / aspect
+    fig, ax = plt.subplots(figsize=(w, h))
+    ax.imshow(img)
+
+    count = 0
+    if tree_predictions is not None:
+        for row in tree_predictions.itertuples(index=False):
+            x = row[0]
+            y = row[1]
+            w = row[2] - row[0]
+            h = row[3] - row[1]
+            color = (row[5], 1, row[5])
+            rect = patches.Rectangle((x, y), w, h, linewidth=1, edgecolor=color, facecolor='none')
+            ax.add_patch(rect)
+            count = count + 1
+
+    filename_format = "dt_p{0}_o{1:n}_t{2:n}_n{3}.png"
+    file_name = 'output/' + filename_format.format(patch_size, overlap * 100, thresh * 100, count)
+    plt.savefig(file_name, bbox_inches='tight')
+
+    print(file_name)
+    return file_name
