@@ -1,3 +1,4 @@
+import json
 import os
 import traceback
 
@@ -6,23 +7,46 @@ import matplotlib.pyplot as plt
 import torch
 from PIL import Image
 from deepforest import main
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, session
 
 app = Flask(__name__)
 app.secret_key = 'deep-forest-plugin'
 
 print('Loading deepforest...')
-df_model = main.deepforest()
-df_model.use_release()
+# df_model = main.deepforest()
+# df_model.use_release()
 
 model_path = './tmp/forest_model.pl'
-torch.save(df_model.model.state_dict(), model_path)
+# torch.save(df_model.model.state_dict(), model_path)
 print('Stored deepforest')
 
 
 @app.route("/", methods=['GET'])
 def route_root():
     return jsonify({'msg': 'Welcome to Flask!'})
+
+
+@app.route('/settings', methods=['POST', 'PUT'])
+def store_settings():
+    setting_keys = ['patch_size', 'patch_overlap', 'thresh', 'iou_threshold']
+
+    settings_json = request.get_json()
+    print(settings_json)
+
+    for key in setting_keys:
+        if key in settings_json:
+            session[key] = settings_json[key]
+        else:
+            if key in session:
+                session.pop(key)
+    print(dict(session.items()))
+    return jsonify(dict(session.items()))
+
+
+@app.route('/settings', methods=['GET'])
+def view_settings():
+    print(session.items())
+    return jsonify(dict(session.items()))
 
 
 @app.route('/tree_rects', methods=['POST', 'PUT'])
