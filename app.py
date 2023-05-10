@@ -34,7 +34,6 @@ def route_root():
 @app.route('/settings', methods=['POST', 'PUT'])
 def store_settings():
     settings_json = request.get_json()
-    print(settings_json)
 
     for key in setting_keys:
         if key in settings_json:
@@ -92,6 +91,8 @@ def get_tree_rects(file_name):
             settings[key] = session[key]
         else:
             settings[key] = setting_defaults[key]
+
+    print(settings)
 
     tree_predictions = []
     again = True
