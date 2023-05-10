@@ -102,6 +102,7 @@ def get_tree_rects(file_name):
             model = main.deepforest()
             model.model.load_state_dict(torch.load(model_path))
             model.config["score_thresh"] = settings['thresh']
+            model.config["num_workers"] = 4
             Image.MAX_IMAGE_PIXELS = None
             tree_predictions = model.predict_tile(file_name,
                                                   return_plot=False,
