@@ -42,7 +42,7 @@ def store_settings():
         else:
             if key in session:
                 session.pop(key)
-    print(dict(session.items()))
+    print('Stored settings: ', dict(session.items()))
     return jsonify(dict(session.items()))
 
 
@@ -92,8 +92,7 @@ def get_tree_rects(file_name):
             settings[key] = session[key]
         else:
             settings[key] = setting_defaults[key]
-
-    print(settings)
+    print('Current settings: ', settings)
 
     # load model
     model = df_model
