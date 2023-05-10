@@ -20,9 +20,10 @@ setting_defaults = {'patch_size': 900,
 
 # load deepforest
 model_path = './tmp/forest_model.pl'
-# df_model = main.deepforest()
+df_model = main.deepforest()
 # df_model.use_release()
 # torch.save(df_model.model.state_dict(), model_path)
+df_model.model.load_state_dict(torch.load(model_path))
 print(' -- Loaded deepforest!')
 
 
@@ -94,17 +95,19 @@ def get_tree_rects(file_name):
 
     print(settings)
 
+    # load model
+    model = df_model
+    model.create_trainer()
+    model.config["score_thresh"] = settings['thresh']
+    model.config["num_workers"] = 8
+    Image.MAX_IMAGE_PIXELS = None
+
     tree_predictions = []
     again = True
     attempts = 0
     while again:
         try:
             attempts = attempts + 1
-            model = main.deepforest()
-            model.model.load_state_dict(torch.load(model_path))
-            model.config["score_thresh"] = settings['thresh']
-            model.config["num_workers"] = 4
-            Image.MAX_IMAGE_PIXELS = None
             tree_predictions = model.predict_tile(file_name,
                                                   return_plot=False,
                                                   patch_size=settings['patch_size'],
